@@ -1,0 +1,62 @@
+{
+ "itemNumber": "9200003",
+ "name": "Example Electric Scooter 250W",
+ "isActive": true,
+ "isSpecialProduct": false,
+ "brand": {
+  "code": "examplemobility",
+  "name": "Example Mobility"
+ },
+ "feature": {
+  "description": "Invented e-scooter for the tests.",
+  "pointers": [
+   "Folds for storage"
+  ]
+ },
+ "classifications": [
+  {
+   "code": "example",
+   "features": [
+    {
+     "code": "colour",
+     "comparable": false,
+     "featureValues": [
+      {
+       "value": "Black"
+      }
+     ],
+     "name": "Colour",
+     "range": false
+    }
+   ],
+   "name": "EXAMPLE"
+  }
+ ],
+ "weight": "16",
+ "guideDocument": [
+  {
+   "docType": "User guide",
+   "mime": "",
+   "sequence": "",
+   "size": 0,
+   "thumbnailUrl": "https://media.bunnings.com.au/api/public/content/00000000000000000000000000000c01?v=1",
+   "url": "https://media.bunnings.com.au/api/public/content/00000000000000000000000000000c01?v=1"
+  },
+  {
+   "docType": "E-micromobility information",
+   "mime": "",
+   "sequence": "",
+   "size": 0,
+   "thumbnailUrl": "https://media.bunnings.com.au/api/public/content/00000000000000000000000000000c02?v=1",
+   "url": "https://media.bunnings.com.au/api/public/content/00000000000000000000000000000c02?v=1"
+  }
+ ],
+ "hasEmicroMobilitySafetyDoc": true,
+ "productLinks": [
+  "guideDocument",
+  "details",
+  "feature",
+  "warrantyReturns"
+ ],
+ "isMarketLink": false
+}

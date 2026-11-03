@@ -1,0 +1,65 @@
+{
+ "itemNumber": "9200001",
+ "name": "FlowLink PEX Pipe 16mm x 25m",
+ "isActive": true,
+ "isSpecialProduct": false,
+ "brand": {
+  "code": "flowlink",
+  "name": "FlowLink"
+ },
+ "feature": {
+  "description": "Invented PEX pipe for the tests.",
+  "pointers": [
+   "Flexible",
+   "Suits FlowLink fittings"
+  ]
+ },
+ "classifications": [
+  {
+   "code": "example",
+   "features": [
+    {
+     "code": "colour",
+     "comparable": false,
+     "featureValues": [
+      {
+       "value": "White"
+      }
+     ],
+     "name": "Colour",
+     "range": false
+    },
+    {
+     "code": "pipe_diameter",
+     "comparable": false,
+     "featureValues": [
+      {
+       "value": "16mm"
+      }
+     ],
+     "name": "Pipe Diameter",
+     "range": false
+    }
+   ],
+   "name": "EXAMPLE"
+  }
+ ],
+ "weight": "2.1",
+ "guideDocument": [
+  {
+   "docType": "Installation",
+   "mime": "application/pdf",
+   "sequence": "",
+   "size": 145977,
+   "thumbnailUrl": "https://media.bunnings.com.au/api/public/content/00000000000000000000000000000a01?v=1",
+   "url": "https://media.bunnings.com.au/api/public/content/00000000000000000000000000000a01?v=1"
+  }
+ ],
+ "hasEmicroMobilitySafetyDoc": false,
+ "productLinks": [
+  "guideDocument",
+  "details",
+  "feature",
+  "warrantyReturns"
+ ]
+}

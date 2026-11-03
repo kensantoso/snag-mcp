@@ -1,0 +1,216 @@
+[
+ {
+  "itemnumber": "9100001",
+  "name": "Example 90 x 45mm H3 Treated Pine Framing 3.0m",
+  "brandname": "Example Timber",
+  "isactive": "true",
+  "availableinregions": [
+   "VICMetro",
+   "NSWMetro",
+   "QLDMetro",
+   "SAMetro",
+   "WAMetro",
+   "TASMetro",
+   "NTMetro",
+   "ACT"
+  ],
+  "price_0101": 23.13,
+  "price_0102": 23.13,
+  "price_0201": 27.57,
+  "price_0301": 35.49,
+  "cprice_0101": 7.71,
+  "cprice_0102": 7.71,
+  "cprice_0201": 9.19,
+  "cprice_0301": 11.83,
+  "fulfilmentoptions_0101": [
+   "In-Store",
+   "Delivery"
+  ],
+  "fulfilmentoptions_0102": [
+   "In-Store",
+   "Delivery"
+  ],
+  "fulfilmentoptions_0201": [
+   "In-Store",
+   "Delivery"
+  ],
+  "fulfilmentoptions_0301": [
+   "Delivery"
+  ],
+  "productranges_vicmetro": [
+   "Delivery"
+  ]
+ },
+ {
+  "itemnumber": "9100002",
+  "name": "Tusker 25 Piece HSS Drill Bit Set",
+  "brandname": "Tusker",
+  "isactive": "true",
+  "weight": 0.88,
+  "availableinregions": [
+   "VICMetro",
+   "NSWMetro",
+   "QLDMetro",
+   "SAMetro",
+   "WAMetro",
+   "TASMetro",
+   "NTMetro",
+   "ACT"
+  ],
+  "price_0101": 89.0,
+  "price_0102": 89.0,
+  "price_0201": 89.0,
+  "price_0301": 89.0,
+  "fulfilmentoptions_0101": [
+   "In-Store",
+   "Delivery",
+   "Click & Collect"
+  ],
+  "fulfilmentoptions_0102": [
+   "In-Store",
+   "Delivery",
+   "Click & Collect"
+  ],
+  "fulfilmentoptions_0201": [
+   "In-Store",
+   "Delivery",
+   "Click & Collect"
+  ],
+  "fulfilmentoptions_0301": [
+   "In-Store",
+   "Delivery",
+   "Click & Collect"
+  ],
+  "productranges_vicmetro": [
+   "Click & Collect",
+   "Delivery"
+  ]
+ },
+ {
+  "itemnumber": "9100003",
+  "name": "Westward 20kg General Purpose Cement",
+  "brandname": "Westward Cement",
+  "isactive": "true",
+  "weight": 20.0,
+  "availableinregions": [
+   "WAMetro",
+   "WARegional",
+   "WARemote"
+  ],
+  "price_0101": 1.54,
+  "price_0102": 1.54,
+  "price_0201": 13.22,
+  "fulfilmentoptions_0102": [
+   "Delivery"
+  ],
+  "fulfilmentoptions_0201": [
+   "In-Store",
+   "Delivery",
+   "Click & Collect"
+  ],
+  "productranges_wametro": [
+   "Click & Collect",
+   "Delivery"
+  ]
+ },
+ {
+  "itemnumber": "9100004",
+  "name": "Example 90 x 45mm H4 Treated Pine 4.8m",
+  "brandname": "Example Timber",
+  "isactive": "true",
+  "weight": 9.72,
+  "availableinregions": [
+   "VICMetro",
+   "NSWMetro",
+   "QLDMetro",
+   "SAMetro",
+   "WAMetro",
+   "TASMetro",
+   "NTMetro",
+   "ACT"
+  ],
+  "price_0101": 78.7,
+  "price_0102": 78.7,
+  "price_0201": 78.7,
+  "price_0301": 78.7,
+  "fulfilmentoptions_0101": [
+   "In-Store",
+   "Delivery",
+   "Click & Collect"
+  ],
+  "fulfilmentoptions_0102": [
+   "In-Store",
+   "Delivery",
+   "Click & Collect"
+  ],
+  "fulfilmentoptions_0201": [
+   "In-Store",
+   "Delivery",
+   "Click & Collect"
+  ],
+  "fulfilmentoptions_0301": [
+   "In-Store",
+   "Delivery",
+   "Click & Collect"
+  ],
+  "productranges_vicmetro": [
+   "Click & Collect",
+   "Delivery",
+   "Special Order"
+  ]
+ },
+ {
+  "itemnumber": "9100005",
+  "name": "Regal Shower Seat with Back and Armrests",
+  "brandname": "Regal Bathroom",
+  "isactive": "true",
+  "weight": 2.6,
+  "sellername": "Example Health Supplies",
+  "availableinregions": [
+   "VICMetro",
+   "NSWMetro",
+   "QLDMetro",
+   "SAMetro",
+   "WAMetro",
+   "TASMetro",
+   "NTMetro",
+   "ACT"
+  ],
+  "price_0101": 159.0,
+  "price_0102": 159.0,
+  "price_0201": 159.0,
+  "price_0301": 159.0,
+  "fulfilmentoptions_0101": [
+   "Delivery"
+  ],
+  "fulfilmentoptions_0102": [
+   "Delivery"
+  ],
+  "fulfilmentoptions_0201": [
+   "Delivery"
+  ],
+  "fulfilmentoptions_0301": [
+   "Delivery"
+  ],
+  "productranges_0101": [
+   "Marketplace",
+   "Delivery"
+  ],
+  "productranges_0102": [
+   "Marketplace",
+   "Delivery"
+  ],
+  "productranges_0201": [
+   "Marketplace",
+   "Delivery"
+  ],
+  "productranges_0301": [
+   "Marketplace",
+   "Delivery"
+  ],
+  "productranges_vicmetro": [
+   "Marketplace",
+   "Delivery"
+  ]
+ }
+]

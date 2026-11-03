@@ -1,0 +1,780 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Pick list</title>
+<!--
+  check_list's pick list and store map, as an MCP App (SEP-1865).
+
+  One self-contained page: it loads nothing and connects nowhere. It talks to
+  the host over postMessage JSON-RPC, by hand rather than through the
+  ext-apps SDK, since it needs only a handful of messages:
+    view -> host  ui/initialize, ui/notifications/initialized,
+                  ui/notifications/size-changed, ui/request-display-mode,
+                  tools/call get_store_layout
+    host -> view  ui/notifications/tool-input, ui/notifications/tool-result,
+                  ui/notifications/tool-cancelled,
+                  ui/notifications/host-context-changed, ping,
+                  ui/resource-teardown
+  The tool result carries the pick list; the floor plan, too big for the
+  model's context, comes from get_store_layout, an app-only tool. If that
+  fails the view shows the PNG the result already carries.
+-->
+<style>
+:root {
+  /* Neutral on purpose: no retailer's brand colours. */
+  --accent: #2b59c3; --ink: #34444c; --ink-2: #4a6572; --ok: #2e7d32; --bad: #c62828; --amber: #b25e00;
+  --bg: var(--color-background-primary, #ffffff);
+  --bg-2: var(--color-background-secondary, #f4f5f3);
+  --fg: var(--color-text-primary, #1c2321);
+  --fg-2: var(--color-text-secondary, #5c6763);
+  --line: var(--color-border-primary, #d9dedb);
+  --floor: #f6f7f4; --bay: #c9d2cf; --promo: #ecd48f; --landmark: #e3e8e5;
+  --access: #c9d6e8; --outline: var(--ink); --route: var(--accent);
+  --font: var(--font-sans, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif);
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  --bg: var(--color-background-primary, #1b1f1e);
+  --bg-2: var(--color-background-secondary, #252a29);
+  --fg: var(--color-text-primary, #eef1ef);
+  --fg-2: var(--color-text-secondary, #a5b0ac);
+  --line: var(--color-border-primary, #3a4240);
+  --floor: #232927; --bay: #47524f; --promo: #7a6a35; --landmark: #2f3735;
+  --access: #34465e; --outline: #9fb3bf; --accent: #7aa2ff; --route: var(--accent); --ink: #5f7a88; --ink-2: #a9c0cc; --ok: #81c784; --bad: #ef9a9a;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.4 var(--font); }
+body { padding: 12px; }
+h1 { font-size: 16px; margin: 0; font-weight: 650; }
+.sub { color: var(--fg-2); font-size: 12.5px; margin-top: 2px; }
+.note { font-size: 12.5px; color: var(--fg-2); background: var(--bg-2); border-radius: 6px; padding: 6px 9px; margin: 8px 0; }
+.note.warn { color: var(--amber); }
+.badge { display: inline-block; font-size: 11px; font-weight: 600; letter-spacing: .02em; color: #fff;
+  background: var(--accent); border-radius: 3px; padding: 0 5px; margin-right: 6px; vertical-align: 1px; }
+
+/* map */
+.mapwrap { position: relative; margin: 10px 0 6px; border: 1px solid var(--line); border-radius: 8px;
+  overflow: hidden; background: var(--bg-2); }
+.floors { display: flex; gap: 4px; flex-wrap: wrap; padding: 6px; border-bottom: 1px solid var(--line); }
+.floors button { font: inherit; font-size: 12.5px; border: 1px solid var(--line); background: var(--bg);
+  color: var(--fg); border-radius: 14px; padding: 2px 10px; cursor: pointer; }
+.floors button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: #fff; }
+.floors button .n { opacity: .75; margin-left: 4px; }
+svg.map { display: block; width: 100%; touch-action: pan-y; user-select: none; -webkit-user-select: none; cursor: grab; }
+svg.map.zoomed { touch-action: none; }
+svg.map.dragging { cursor: grabbing; }
+.zoom { position: absolute; right: 6px; bottom: 6px; display: flex; flex-direction: column; gap: 4px; }
+.zoom button { width: 30px; height: 30px; font: 600 16px/1 var(--font); border: 1px solid var(--line);
+  border-radius: 6px; background: var(--bg); color: var(--fg); cursor: pointer; padding: 0; }
+.outline { fill: var(--floor); stroke: var(--outline); stroke-width: 2; vector-effect: non-scaling-stroke; }
+.bay { fill: var(--bay); }
+.promo { fill: var(--promo); }
+.landmark { fill: var(--landmark); stroke: var(--line); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.landmark.registers { fill: color-mix(in srgb, var(--ink) 25%, var(--landmark)); }
+.access { fill: var(--access); }
+.hit { fill: var(--accent); stroke: var(--accent); stroke-width: 3; vector-effect: non-scaling-stroke; }
+.hit.done { fill: var(--fg-2); stroke: var(--fg-2); }
+.route { fill: none; stroke: var(--route); stroke-width: 3; stroke-linejoin: round; stroke-linecap: round;
+  vector-effect: non-scaling-stroke; opacity: .85; }
+.route.straight { stroke-dasharray: 6 5; opacity: .6; }
+.lbl text { paint-order: stroke; stroke: var(--floor); stroke-width: 3px; stroke-linejoin: round; fill: var(--fg-2); }
+.lbl.aisle text { font-size: 11px; font-weight: 600; }
+.lbl.dept text { font-size: 11.5px; font-style: italic; }
+.lbl.place text { font-size: 10.5px; }
+.lbl.end text { font-size: 11.5px; font-weight: 650; fill: var(--ink-2); }
+.lbl.hidden { display: none; }
+.pin circle, .pin rect { fill: var(--ink); stroke: #fff; stroke-width: 2; }
+.leader { stroke: var(--accent); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+.marker { cursor: pointer; }
+.marker circle { fill: var(--accent); stroke: #fff; stroke-width: 2; }
+.marker text { fill: #fff; font-size: 11.5px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+.marker.done circle { fill: #8a9590; }
+.marker.hot circle { stroke: var(--fg); stroke-width: 3; }
+.hop { cursor: pointer; }
+.hop rect { fill: var(--ink); }
+.hop text { fill: #fff; font-size: 11px; font-weight: 600; dominant-baseline: central; }
+
+/* list */
+ol.picks { list-style: none; margin: 8px 0 0; padding: 0; }
+.picks li.pick { display: grid; grid-template-columns: 22px 26px 1fr auto; gap: 2px 8px; align-items: start;
+  padding: 7px 6px; border-radius: 6px; cursor: pointer; }
+.picks li.pick + li.pick { border-top: 1px solid var(--line); }
+.picks li.pick.hot { background: color-mix(in srgb, var(--accent) 9%, transparent); }
+.picks li.pick.done .name, .picks li.pick.done .meta { text-decoration: line-through; opacity: .6; }
+.picks input { margin: 3px 0 0; width: 16px; height: 16px; accent-color: var(--accent); }
+.num { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%;
+  background: var(--accent); color: #fff; font-size: 11.5px; font-weight: 700; }
+li.done .num { background: #8a9590; }
+.name { font-weight: 550; overflow-wrap: anywhere; }
+.meta { grid-column: 3 / 5; color: var(--fg-2); font-size: 12.5px; }
+.meta b { color: var(--fg); font-weight: 600; }
+.price { text-align: right; font-weight: 600; white-space: nowrap; }
+.hopline { color: var(--ink-2); font-size: 12.5px; font-weight: 600; padding: 6px 6px 2px 62px; }
+.status { font-size: 11px; font-weight: 650; border-radius: 3px; padding: 0 4px; white-space: nowrap; }
+.status.in_stock { color: var(--ok); background: color-mix(in srgb, var(--ok) 14%, transparent); }
+.status.short, .status.stock_unknown, .status.special_order { color: var(--amber); background: color-mix(in srgb, var(--amber) 14%, transparent); }
+.status.out_of_stock, .status.not_sold_here, .status.not_found, .status.inactive, .status.marketplace { color: var(--bad); background: color-mix(in srgb, var(--bad) 12%, transparent); }
+h2 { font-size: 13px; margin: 14px 0 4px; color: var(--fg-2); font-weight: 650; text-transform: uppercase; letter-spacing: .04em; }
+ul.off { margin: 0; padding: 0 0 0 18px; font-size: 13px; }
+ul.off li { margin: 2px 0; }
+.totals { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-top: 10px;
+  padding-top: 8px; border-top: 2px solid var(--line); font-weight: 650; }
+.load { font-size: 12.5px; color: var(--fg-2); margin-top: 6px; }
+table.rank { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
+table.rank th, table.rank td { text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.rank td.r, table.rank th.r { text-align: right; white-space: nowrap; }
+table.rank .miss { color: var(--fg-2); font-size: 12px; }
+img.fallback { display: block; width: 100%; height: auto; }
+footer { margin-top: 12px; font-size: 11px; color: var(--fg-2); }
+.expand { float: right; font: inherit; font-size: 12px; border: 1px solid var(--line); background: var(--bg);
+  color: var(--fg); border-radius: 6px; padding: 2px 8px; cursor: pointer; }
+@media (max-width: 480px) {
+  body { padding: 8px; }
+  .picks li.pick { grid-template-columns: 22px 24px 1fr; }
+  .price { grid-column: 3; text-align: left; }
+  .meta { grid-column: 3; }
+  .hopline { padding-left: 54px; }
+}
+</style>
+</head>
+<body>
+<div id="app"><div class="sub">Waiting for the pick list…</div></div>
+<script>
+"use strict";
+(() => {
+// ---------- protocol ----------
+let nextId = 1;
+const pending = new Map();
+const send = (m) => window.parent.postMessage(Object.assign({ jsonrpc: "2.0" }, m), "*");
+const request = (method, params, ms = 30000) => new Promise((resolve, reject) => {
+  const id = nextId++;
+  const timer = setTimeout(() => { pending.delete(id); reject(new Error(method + " timed out")); }, ms);
+  pending.set(id, { resolve, reject, timer });
+  send({ id, method, params });
+});
+const notify = (method, params) => send({ method, params });
+
+let host = { context: {}, capabilities: {} };
+let state = { input: null, result: null, layout: null, layoutErr: null, floor: null, done: new Set(), hot: 0 };
+
+window.addEventListener("message", (e) => {
+  if (e.source !== window.parent) return;
+  const m = e.data;
+  if (!m || m.jsonrpc !== "2.0") return;
+  if (m.id !== undefined && !m.method) { // a response
+    const p = pending.get(m.id);
+    if (!p) return;
+    pending.delete(m.id); clearTimeout(p.timer);
+    if (m.error) p.reject(new Error(m.error.message || "error")); else p.resolve(m.result);
+    return;
+  }
+  switch (m.method) {
+    case "ui/notifications/tool-input": state.input = (m.params || {}).arguments || {}; render(); break;
+    case "ui/notifications/tool-result": onResult(m.params || {}); break;
+    case "ui/notifications/tool-cancelled": state.cancelled = (m.params || {}).reason || "cancelled"; render(); break;
+    case "ui/notifications/host-context-changed": applyContext(Object.assign(host.context, m.params || {})); render(); break;
+    case "ping": send({ id: m.id, result: {} }); break;
+    case "ui/resource-teardown": send({ id: m.id, result: {} }); break;
+    default: if (m.id !== undefined) send({ id: m.id, error: { code: -32601, message: "Method not found" } });
+  }
+});
+
+function applyContext(c) {
+  const root = document.documentElement;
+  const dark = c.theme ? c.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+  root.dataset.theme = dark ? "dark" : "light";
+  const vars = (c.styles || {}).variables || {};
+  for (const [k, v] of Object.entries(vars)) if (k.startsWith("--") && typeof v === "string") root.style.setProperty(k, v);
+}
+
+async function start() {
+  applyContext({});
+  try {
+    const r = await request("ui/initialize", {
+      appInfo: { name: "snag-pick-list", version: "1" },
+      appCapabilities: { availableDisplayModes: ["inline", "fullscreen"] },
+      protocolVersion: "2026-01-26",
+    });
+    host.capabilities = r.hostCapabilities || {};
+    host.context = r.hostContext || {};
+    applyContext(host.context);
+  } catch (err) { /* a host that does not answer still sends the result */ }
+  notify("ui/notifications/initialized", {});
+  watchSize();
+  render();
+}
+
+function watchSize() {
+  let last = "", queued = false;
+  const report = () => {
+    if (queued) return; queued = true;
+    requestAnimationFrame(() => {
+      queued = false;
+      const html = document.documentElement, h0 = html.style.height;
+      html.style.height = "max-content";
+      const height = Math.ceil(html.getBoundingClientRect().height);
+      html.style.height = h0;
+      const width = Math.ceil(window.innerWidth), key = width + "x" + height;
+      if (key !== last) { last = key; notify("ui/notifications/size-changed", { width, height }); }
+    });
+  };
+  const ro = new ResizeObserver(report);
+  ro.observe(document.documentElement); ro.observe(document.body);
+  report();
+}
+
+// ---------- data ----------
+function dataOf(res) {
+  if (res.structuredContent) return res.structuredContent;
+  // Clients that drop structuredContent still have it as the last text block.
+  for (const c of (res.content || []).slice().reverse()) {
+    if (c.type === "text") { try { return JSON.parse(c.text); } catch (e) { /* not JSON */ } }
+  }
+  return null;
+}
+
+function onResult(res) {
+  state.result = res; state.layout = null; state.layoutErr = null; state.done = new Set(); state.hot = 0;
+  const d = dataOf(res);
+  const sm = d && d.store_map;
+  state.floor = sm ? (sm.start ? sm.start.storey : (sm.stops[0] || {}).storey) : null;
+  render();
+  if (!sm || !d.pick_list) return;
+  const args = { store_id: d.pick_list.store.store_id, map_id: sm.map_id, stops: sm.stops.map((s) => s.address) };
+  request("tools/call", { name: "get_store_layout", arguments: args }, 45000).then((r) => {
+    const lay = r && !r.isError && dataOf(r);
+    if (!lay || !lay.storeys) throw new Error(textOf(r) || "no layout");
+    state.layout = lay; render();
+  }).catch((err) => { state.layoutErr = err.message || String(err); render(); });
+}
+
+const textOf = (r) => ((r && r.content) || []).filter((c) => c.type === "text").map((c) => c.text).join(" ");
+
+// ---------- helpers ----------
+const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const money = (v) => v == null ? "" : "$" + v.toFixed(2);
+const words = (s) => String(s || "").replace(/_/g, " ");
+const SVG = "http://www.w3.org/2000/svg";
+function el(tag, attrs, parent) {
+  const e = document.createElementNS(SVG, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+const pts = (flat) => { let s = ""; for (let i = 0; i < flat.length; i += 2) s += flat[i] + "," + flat[i + 1] + " "; return s; };
+const storeyName = (sm, n) => ((sm.storeys || []).find((s) => s.number === n) || {}).name || ("Level " + n);
+
+// ---------- render ----------
+function render() {
+  const app = document.getElementById("app");
+  const res = state.result;
+  if (!res) {
+    const n = state.input && state.input.items ? state.input.items.length : 0;
+    app.innerHTML = state.cancelled ? `<div class="note warn">Cancelled: ${esc(state.cancelled)}</div>`
+      : `<div class="sub">${n ? `Checking ${n} item${n === 1 ? "" : "s"} against live stock…` : "Waiting for the pick list…"}</div>`;
+    return;
+  }
+  const d = dataOf(res);
+  if (res.isError || !d) {
+    app.innerHTML = `<div class="note warn">${esc(textOf(res) || "check_list failed")}</div>${footer()}`;
+    return;
+  }
+  if (!d.pick_list) { app.innerHTML = rankingHTML(d); return; }
+  app.innerHTML = pickHTML(d);
+  bindList(d);
+  const sm = d.store_map;
+  if (sm && state.layout) drawMap(d);
+}
+
+function footer(d) {
+  const sm = d && d.store_map;
+  const bits = [];
+  if (sm) bits.push(`Floor plan: Bunnings store map ${esc(sm.map_id)}.`);
+  if (d && d.stock_checked_at) bits.push(`Stock checked ${esc(d.stock_checked_at)}.`);
+  bits.push("Unofficial; not affiliated with Bunnings.");
+  return `<footer>${bits.join(" ")}</footer>`;
+}
+
+function expandButton() {
+  const modes = host.context.availableDisplayModes || [];
+  if (!modes.includes("fullscreen")) return "";
+  const full = host.context.displayMode === "fullscreen";
+  return `<button class="expand" data-mode="${full ? "inline" : "fullscreen"}">${full ? "Close" : "Expand"}</button>`;
+}
+
+function pickHTML(d) {
+  const pl = d.pick_list, sm = d.store_map, st = pl.store;
+  const multi = sm && sm.storeys && sm.storeys.length > 1;
+  let sub = `${st.distance_km} km away · total ${money(pl.total)}`;
+  if (sm && sm.walk_m != null) sub += ` · about ${Math.round(sm.walk_m)} m on foot`;
+  let h = `${expandButton()}<h1><span class="badge">Pick list</span>${esc(st.name)} (${esc(st.store_id)})</h1><div class="sub">${esc(sub)}</div>`;
+  if (d.map_note) h += `<div class="note">${esc(d.map_note)}</div>`;
+
+  if (sm) {
+    if (state.layout) {
+      h += `<div class="mapwrap">${multi ? floorButtons(sm) : ""}<svg class="map" id="map" role="img" aria-label="Floor plan of ${esc(st.name)} with the stops numbered"></svg>
+        <div class="zoom"><button data-z="1.6" aria-label="Zoom in">+</button><button data-z="0.625" aria-label="Zoom out">−</button><button data-z="0" aria-label="Fit the floor">⤢</button></div></div>`;
+    } else if (state.layoutErr) {
+      const img = (state.result.content || []).find((c) => c.type === "image");
+      h += `<div class="note">The interactive map is not available (${esc(state.layoutErr)})${img ? "; this is the static one." : "."}</div>`;
+      if (img) h += `<div class="mapwrap"><img class="fallback" alt="Floor plan with the stops numbered" src="data:${esc(img.mimeType || "image/png")};base64,${img.data}"></div>`;
+    } else {
+      h += `<div class="mapwrap"><div class="sub" style="padding:40px 12px;text-align:center">Loading the floor plan…</div></div>`;
+    }
+  }
+
+  h += `<ol class="picks">`;
+  let prevFloor = sm && sm.start ? sm.start.storey : null;
+  const stops = [], off = [];
+  for (const l of pl.lines) (l.stop ? stops : off).push(l);
+  const stopAt = (n) => sm ? sm.stops.find((s) => s.stop === n) : null;
+  for (const l of stops) {
+    const s = stopAt(l.stop);
+    if (multi && s && prevFloor != null && s.storey !== prevFloor) h += `<li class="hopline">${esc(hopText(sm, prevFloor, s.storey))}</li>`;
+    if (s) prevFloor = s.storey;
+    h += lineHTML(l, s, multi ? storeyName(sm, s ? s.storey : 0) : "");
+  }
+  if (multi && sm.start && prevFloor != null && prevFloor !== sm.start.storey) h += `<li class="hopline">${esc(hopText(sm, prevFloor, sm.start.storey))} for the registers</li>`;
+  if (!sm) for (const l of off.splice(0)) h += lineHTML(l, null, "");
+  h += `</ol>`;
+
+  if (off.length) {
+    h += `<h2>Not on the map</h2><ul class="off">`;
+    for (const l of off) {
+      h += `<li>${esc(l.name || l.item_number)} ×${l.quantity} <span class="status ${esc(l.status)}">${esc(words(l.status))}</span>${l.aisle ? ` · aisle ${esc(l.aisle)} bay ${esc(l.bay)}` : ""}${l.line_total != null ? ` · ${money(l.line_total)}` : ""}</li>`;
+    }
+    h += `</ul>`;
+  }
+  h += `<div class="totals"><span>Total ${money(pl.total)}</span><span>${pl.all_in_stock ? "Everything in stock" : "Not everything is in stock"}</span></div>`;
+  h += loadHTML(d.load);
+  return h + footer(d);
+}
+
+// hopText names the floor change, and how, from the route when it is known.
+function hopText(sm, from, to) {
+  const name = storeyName(sm, to);
+  const via = state.layout ? accessBetween(from, to) : "";
+  return `Take the ${via || "lift or stairs"} to ${name}`;
+}
+
+// accessBetween is the lift, stairs or travelator a leg of the route leaves
+// floor from by on its way to floor to, which may pass other floors.
+function accessBetween(from, to) {
+  const lay = state.layout;
+  for (const leg of lay.route || []) {
+    for (let i = 1; i < leg.length; i++) {
+      if (leg[i - 1][0] === from && leg[i][0] !== from && leg.slice(i).some((p) => p[0] === to)) {
+        const s = lay.storeys.find((x) => x.number === from);
+        let best = "", bd = Infinity;
+        for (const [name, poly] of (s && s.level_access) || []) {
+          const [cx, cy] = centre(poly), dd = Math.hypot(cx - leg[i - 1][1], cy - leg[i - 1][2]);
+          if (dd < bd) { bd = dd; best = name.toLowerCase(); }
+        }
+        return best;
+      }
+    }
+  }
+  return "";
+}
+
+function centre(flat) {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (let i = 0; i < flat.length; i += 2) { x0 = Math.min(x0, flat[i]); x1 = Math.max(x1, flat[i]); y0 = Math.min(y0, flat[i + 1]); y1 = Math.max(y1, flat[i + 1]); }
+  return [(x0 + x1) / 2, (y0 + y1) / 2];
+}
+
+function lineHTML(l, s, floor) {
+  const done = state.done.has(l.item_number);
+  const where = l.aisle ? `Aisle <b>${esc(l.aisle)}</b> bay <b>${esc(l.bay)}</b>` : "No aisle given";
+  const stock = l.stock != null ? `${l.stock} in stock` : "";
+  const unit = l.unit_price != null && l.quantity > 1 ? `${money(l.unit_price)} each` : "";
+  const meta = [floor && `<b>${esc(floor)}</b>`, where, `×${l.quantity}`, unit, stock].filter(Boolean).join(" · ");
+  return `<li class="pick${done ? " done" : ""}${state.hot && state.hot === l.stop ? " hot" : ""}" data-stop="${l.stop || 0}" data-item="${esc(l.item_number)}">
+    <input type="checkbox" ${done ? "checked" : ""} aria-label="Picked up ${esc(l.name || l.item_number)}">
+    ${l.stop ? `<span class="num">${l.stop}</span>` : `<span></span>`}
+    <span class="name">${esc(l.name || l.item_number)} <span class="status ${esc(l.status)}">${esc(words(l.status))}</span></span>
+    <span class="price">${money(l.line_total)}</span>
+    <span class="meta">${meta} · <span style="opacity:.7">${esc(l.item_number)}</span></span></li>`;
+}
+
+function loadHTML(load) {
+  if (!load) return "";
+  const bits = [];
+  if (load.total_known_weight_kg) bits.push(`known weight ${load.total_known_weight_kg.toFixed(1)} kg`);
+  if (load.longest_item) bits.push(`longest ${load.longest_item.length_m.toFixed(2)} m (${esc(load.longest_item.name)})`);
+  if (load.weight_unknown && load.weight_unknown.length) bits.push(`weight unknown for ${esc(load.weight_unknown.join(", "))}`);
+  if (load.size_unknown && load.size_unknown.length) bits.push(`size unknown for ${esc(load.size_unknown.join(", "))}`);
+  return bits.length ? `<div class="load">Load: ${bits.join("; ")}.</div>` : "";
+}
+
+function floorButtons(sm) {
+  const count = (n) => sm.stops.filter((s) => s.storey === n).length;
+  return `<div class="floors" role="group" aria-label="Floor">` + sm.storeys.map((s) =>
+    `<button data-floor="${s.number}" aria-pressed="${s.number === state.floor}">${esc(s.name)}<span class="n">${count(s.number) ? count(s.number) + " stop" + (count(s.number) > 1 ? "s" : "") : ""}</span></button>`).join("") + `</div>`;
+}
+
+function rankingHTML(d) {
+  const cov = d.coverage || {};
+  let h = `<h1><span class="badge">Stores</span>Where to go for the whole list</h1>`;
+  h += `<div class="sub">${esc(cov.stores_covered)} of ${esc(cov.stores_in_radius)} stores within ${esc(cov.radius_km)} km of ${esc(cov.location)}</div>`;
+  if (d.note) h += `<div class="note">${esc(d.note)}</div>`;
+  if (cov.note) h += `<div class="note">${esc(cov.note)}</div>`;
+  const rows = (d.stores || []).slice(0, 15);
+  if (rows.length) {
+    h += `<table class="rank"><thead><tr><th>Store</th><th class="r">In stock</th><th class="r">Cost of those</th></tr></thead><tbody>`;
+    for (const r of rows) {
+      const miss = (r.missing || []).map((m) => `${esc(m.name || m.item_number)} (${esc(words(m.status))})`).join(", ");
+      h += `<tr><td>${esc(r.name)} <span class="miss">${esc(r.distance_km)} km</span>${miss ? `<div class="miss">Missing: ${miss}</div>` : ""}</td>
+        <td class="r">${r.lines_in_stock}/${r.lines_total}</td><td class="r">${money(r.cost_of_lines_in_stock)}</td></tr>`;
+    }
+    h += `</tbody></table>`;
+    if ((d.stores || []).length > rows.length) h += `<div class="sub">and ${d.stores.length - rows.length} more.</div>`;
+  }
+  return h + loadHTML(d.load) + footer(d);
+}
+
+// ---------- list interaction ----------
+function bindList(d) {
+  const app = document.getElementById("app");
+  app.querySelectorAll("li.pick").forEach((li) => {
+    const stop = +li.dataset.stop, item = li.dataset.item;
+    li.querySelector("input").addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (e.target.checked) state.done.add(item); else state.done.delete(item);
+      li.classList.toggle("done", e.target.checked);
+      refreshMarkers(d);
+    });
+    li.addEventListener("mouseenter", () => setHot(stop));
+    li.addEventListener("mouseleave", () => setHot(0));
+    li.addEventListener("click", () => { if (stop) focusStop(d, stop); });
+  });
+  app.querySelectorAll(".floors button").forEach((b) => b.addEventListener("click", () => {
+    state.floor = +b.dataset.floor; render();
+  }));
+  app.querySelectorAll(".zoom button").forEach((b) => b.addEventListener("click", () => {
+    const z = +b.dataset.z;
+    if (!z) fit(); else zoomBy(z);
+  }));
+  const ex = app.querySelector(".expand");
+  if (ex) ex.addEventListener("click", () => request("ui/request-display-mode", { mode: ex.dataset.mode })
+    .then((r) => { host.context.displayMode = r.mode; render(); }).catch(() => {}));
+}
+
+function setHot(stop) {
+  state.hot = stop;
+  document.querySelectorAll("li.pick").forEach((li) => li.classList.toggle("hot", !!stop && +li.dataset.stop === stop));
+  document.querySelectorAll(".marker").forEach((m) => m.classList.toggle("hot", +m.dataset.stop === stop));
+}
+
+function focusStop(d, stop) {
+  const s = d.store_map.stops.find((x) => x.stop === stop);
+  if (!s || !state.layout) return;
+  if (s.storey !== state.floor) { state.floor = s.storey; render(); }
+  setHot(stop);
+  centreOn(s.x_m * 10, s.y_m * 10, Math.max(view.k, view.fitK * 2.5));
+}
+
+// ---------- map ----------
+let view = { x: 0, y: 0, k: 1, fitK: 1, w: 0, h: 0, floor: null };
+let scaled = []; // groups kept at screen size: {g, x, y, prio, w, h, lbl}
+
+function drawMap(d) {
+  const svg = document.getElementById("map");
+  if (!svg) return;
+  const lay = state.layout, sm = d.store_map;
+  const s = lay.storeys.find((x) => x.number === state.floor) || lay.storeys[0];
+  state.floor = s.number;
+  const box = svg.getBoundingClientRect();
+  const w = Math.max(240, box.width);
+  const full = host.context.displayMode === "fullscreen";
+  const maxH = full ? Math.max(300, window.innerHeight - 260) : Math.min(460, Math.max(220, window.innerHeight * 0.6));
+  const minK = 0.22; // screen px per decimetre below which a store starts zoomed in on its stops
+  let h = Math.round(Math.min(maxH, Math.max(220, w * (s.h / s.w) + 24)));
+  const close = !state.wholeFloor && Math.min((w - 24) / s.w, (h - 24) / s.h) < minK;
+  if (close) h = Math.round(Math.min(maxH, Math.max(160, s.h * minK + 40)));
+  svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+  svg.style.height = h + "px";
+  const sameFloor = view.floor === s.number && view.w === w && view.h === h;
+  view.w = w; view.h = h;
+  view.fitK = Math.min((w - 24) / s.w, (h - 24) / s.h);
+  if (!sameFloor) {
+    view.floor = s.number; view.k = view.fitK; view.x = (s.w - w / view.k) / 2; view.y = (s.h - h / view.k) / 2;
+    // A long store in a narrow chat fits at a scale where the stops crowd
+    // together; start closer, on the stops, and let the fit button show it all.
+    if (close) {
+      const ps = sm.stops.filter((x) => x.storey === s.number).map((x) => [x.x_m * 10, x.y_m * 10]);
+      if (lay.start && lay.start[3] === s.number) ps.push([lay.start[1], lay.start[2]]);
+      if (ps.length) {
+        const xs = ps.map((p) => p[0]), ys = ps.map((p) => p[1]);
+        const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+        const k = Math.max(view.fitK, Math.min(minK, (w - 60) / Math.max(1, x1 - x0), (h - 60) / Math.max(1, y1 - y0)));
+        centreOn((x0 + x1) / 2, (y0 + y1) / 2, k, true);
+      }
+    }
+    state.wholeFloor = false;
+  }
+
+  svg.innerHTML = "";
+  const world = el("g", { id: "world" }, svg);
+  el("polygon", { class: "outline", points: pts(s.outline) }, world);
+  const bays = el("g", {}, world);
+  let path = ""; for (const b of s.bays) path += "M" + pts(b) + "Z";
+  el("path", { class: "bay", d: path }, bays);
+  path = ""; for (const b of s.promo_bays) path += "M" + pts(b) + "Z";
+  el("path", { class: "promo", d: path }, bays);
+  for (const [name, poly] of s.landmarks) el("polygon", { class: "landmark" + (/^registers$/i.test(name) ? " registers" : ""), points: pts(poly) }, world);
+  for (const [, poly] of s.level_access) el("polygon", { class: "access", points: pts(poly) }, world);
+
+  const here = sm.stops.filter((x) => x.storey === s.number);
+  for (const st of here) {
+    const p = st.bay_outline.flatMap(([x, y]) => [x * 10, y * 10]);
+    el("polygon", { class: "hit" + (stopDone(d, st.stop) ? " done" : ""), points: pts(p), "data-stop": st.stop }, world);
+  }
+
+  // The route on this floor, and where it leaves it.
+  const routeG = el("g", {}, world);
+  const hops = [];
+  if (lay.route && lay.route.length && lay.ordering === "walking_graph") {
+    for (const leg of lay.route) {
+      let run = [];
+      const flush = () => { if (run.length > 1) el("polyline", { class: "route", points: run.join(" ") }, routeG); run = []; };
+      for (let i = 0; i < leg.length; i++) {
+        const [f, x, y] = leg[i];
+        if (f === s.number) run.push(x + "," + y);
+        else flush();
+        if (i > 0 && leg[i - 1][0] === s.number && f !== s.number) hops.push({ x: leg[i - 1][1], y: leg[i - 1][2], to: f, up: f > s.number });
+      }
+      flush();
+    }
+  } else {
+    // No walking route is known: straight dashes between stops, in order.
+    const seq = [];
+    if (lay.start && lay.start[3] === s.number) seq.push([lay.start[1], lay.start[2]]);
+    for (const st of here) seq.push([st.x_m * 10, st.y_m * 10]);
+    if (seq.length > 1) el("polyline", { class: "route straight", points: seq.map((p) => p.join(",")).join(" ") }, routeG);
+  }
+
+  // Labels and markers, kept at screen size and culled where they collide.
+  scaled = [];
+  const label = (cls, text, x, y, prio, anchor = "middle") => {
+    const g = el("g", { class: "lbl " + cls }, world);
+    const t = el("text", { "text-anchor": anchor, "dominant-baseline": "central" }, g);
+    t.textContent = text;
+    const fs = cls === "aisle" ? 11 : cls === "place" ? 10.5 : 11.5;
+    scaled.push({ g, x, y, prio, w: text.length * fs * 0.58 + 6, h: fs + 4, anchor, lbl: true });
+    return g;
+  };
+  for (const [name, x, y] of s.departments) label("dept", name, x, y, 3);
+  for (const [name, poly] of s.landmarks) { const [x, y] = centre(poly); label("place", name, x, y, 5); }
+  for (const [name, poly] of s.level_access) { const [x, y] = centre(poly); label("place", name, x, y, 4); }
+  for (const [name, x, y] of s.aisles) label("aisle", name, x, y, 2);
+  // Entrances and the registers try above, below, then beside their pin.
+  const around = (w) => [[0, -15, "middle"], [0, 15, "middle"], [10, 0, "start"], [-10 - w, 0, "start"],
+    [0, -30, "middle"], [0, 30, "middle"], [10, -15, "start"], [10, 15, "start"], [-10 - w, -15, "start"], [-10 - w, 15, "start"]];
+  const pin = (name, x, y, big, square) => {
+    const g = el("g", { class: "pin" }, world);
+    if (square) el("rect", { x: -5, y: -5, width: 10, height: 10, rx: 2 }, g);
+    else el("circle", { r: big ? 6 : 4.5 }, g);
+    scaled.push({ g, x, y, prio: 0, w: 12, h: 12 });
+    const l = label("end", name, x, y, 1);
+    const o = scaled[scaled.length - 1];
+    o.cands = around(o.w);
+  };
+  for (const [name, x, y] of s.entrances) {
+    const isStart = lay.start && lay.start[3] === s.number && lay.start[0] === name;
+    pin((isStart ? "Start: " : "") + name, x, y, isStart, false);
+  }
+  if (lay.end && lay.end[3] === s.number) pin("Finish: " + lay.end[0], lay.end[1], lay.end[2], false, true);
+  for (const hp of hops) {
+    const g = el("g", { class: "hop" }, world);
+    const text = (hp.up ? "↑ " : "↓ ") + storeyName(sm, hp.to);
+    const wpx = text.length * 6.4 + 12;
+    el("rect", { x: -wpx / 2, y: -10, width: wpx, height: 20, rx: 10 }, g);
+    const t = el("text", { "text-anchor": "middle" }, g); t.textContent = text;
+    g.addEventListener("click", () => { state.floor = hp.to; render(); });
+    scaled.push({ g, x: hp.x, y: hp.y, prio: 0, w: wpx, h: 20, hop: true,
+      cands: [[0, -16], [0, 16], [wpx / 2 + 8, 0], [-wpx / 2 - 8, 0], [0, -40], [0, 40]] });
+  }
+  const leaders = el("g", { class: "leaders" }, world);
+  for (const st of here) {
+    const lead = el("line", { class: "leader" }, leaders);
+    const g = el("g", { class: "marker" + (stopDone(d, st.stop) ? " done" : "") + (state.hot === st.stop ? " hot" : ""), "data-stop": st.stop, tabindex: 0 }, world);
+    el("circle", { r: 11 }, g);
+    const t = el("text", {}, g); t.textContent = st.stop;
+    const ti = el("title", {}, g); ti.textContent = `Stop ${st.stop}: aisle ${st.aisle} bay ${st.bay}`;
+    g.addEventListener("mouseenter", () => setHot(st.stop));
+    g.addEventListener("mouseleave", () => setHot(0));
+    g.addEventListener("click", (e) => { e.stopPropagation(); setHot(st.stop); scrollToLine(st.stop); });
+    scaled.push({ g, x: st.x_m * 10, y: st.y_m * 10, prio: -1, w: 24, h: 24, marker: st.stop, lead });
+  }
+  // Markers nearer than their size apart fan out so each stays readable.
+  spread(scaled.filter((o) => o.marker));
+  bindPanZoom(svg);
+  apply();
+}
+
+function stopDone(d, stop) {
+  const items = d.pick_list.lines.filter((l) => l.stop === stop);
+  return items.length > 0 && items.every((l) => state.done.has(l.item_number));
+}
+
+function refreshMarkers(d) {
+  document.querySelectorAll(".marker").forEach((g) => {
+    const stop = +g.dataset.stop, done = stopDone(d, stop);
+    g.classList.toggle("done", done);
+  });
+  document.querySelectorAll(".hit").forEach((p) => p.classList.toggle("done", stopDone(d, +p.dataset.stop)));
+  document.querySelectorAll("li.pick").forEach((li) => li.classList.toggle("done", state.done.has(li.dataset.item)));
+}
+
+function scrollToLine(stop) {
+  const li = document.querySelector(`li.pick[data-stop="${stop}"]`);
+  if (li && li.scrollIntoView) li.scrollIntoView({ block: "nearest", behavior: "smooth" });
+}
+
+// spread gives markers that would overlap on screen a small offset, in screen
+// pixels, around their shared centre; the bay stays highlighted where it is.
+function spread(markers) {
+  for (const m of markers) { m.ox = 0; m.oy = 0; }
+  const groups = [];
+  for (const m of markers) {
+    const g = groups.find((gr) => gr.some((o) => Math.hypot((o.x - m.x) * view.k, (o.y - m.y) * view.k) < 24));
+    if (g) g.push(m); else groups.push([m]);
+  }
+  for (const g of groups) {
+    if (g.length < 2) continue;
+    const r = 12 + 4 * g.length;
+    g.forEach((m, i) => { const a = -Math.PI / 2 + (2 * Math.PI * i) / g.length; m.ox = r * Math.cos(a); m.oy = r * Math.sin(a); });
+  }
+}
+
+function apply() {
+  const world = document.getElementById("world");
+  if (!world) return;
+  world.setAttribute("transform", `scale(${view.k}) translate(${-view.x} ${-view.y})`);
+  const u = 1 / view.k;
+  spread(scaled.filter((o) => o.marker));
+  // Draw order already puts markers last; cull labels greedily by priority.
+  const placed = [];
+  const order = scaled.slice().sort((a, b) => a.prio - b.prio);
+  for (const o of order) {
+    const at = (dx, dy) => {
+      o.g.setAttribute("transform", `translate(${o.x + dx * u} ${o.y + dy * u}) scale(${u})`);
+      return [(o.x - view.x) * view.k + dx, (o.y - view.y) * view.k + dy];
+    };
+    if (o.hop) {
+      // Floor-change badges move clear of the markers but always show.
+      let best = o.cands[0];
+      for (const c of o.cands) {
+        const r = rect((o.x - view.x) * view.k + c[0], (o.y - view.y) * view.k + c[1], o.w, o.h, "middle");
+        if (!placed.some((p) => r.x0 < p.x1 && r.x1 > p.x0 && r.y0 < p.y1 && r.y1 > p.y0)) { best = c; break; }
+      }
+      const [sx, sy] = at(best[0], best[1]);
+      placed.push(rect(sx, sy, o.w, o.h, "middle"));
+      continue;
+    }
+    if (!o.lbl) {
+      const [sx, sy] = at(o.ox || 0, (o.dy || 0) + (o.oy || 0));
+      placed.push(rect(sx, sy, o.w, o.h, "middle"));
+      if (o.lead) {
+        const show = !!(o.ox || o.oy);
+        o.lead.setAttribute("x1", o.x); o.lead.setAttribute("y1", o.y);
+        o.lead.setAttribute("x2", o.x + (o.ox || 0) * u); o.lead.setAttribute("y2", o.y + (o.oy || 0) * u);
+        o.lead.style.display = show ? "" : "none";
+      }
+      continue;
+    }
+    let ok = false;
+    for (const [dx, dy, anchor] of o.cands || [[0, 0, o.anchor]]) {
+      const [sx, sy] = [(o.x - view.x) * view.k + dx, (o.y - view.y) * view.k + dy];
+      const r = rect(sx, sy, o.w, o.h, anchor);
+      const off = r.x0 < 0 || r.y0 < 0 || r.x1 > view.w || r.y1 > view.h;
+      if (off || placed.some((p) => r.x0 < p.x1 && r.x1 > p.x0 && r.y0 < p.y1 && r.y1 > p.y0)) continue;
+      at(dx, dy);
+      o.g.querySelector("text").setAttribute("text-anchor", anchor);
+      placed.push(r); ok = true; break;
+    }
+    o.g.classList.toggle("hidden", !ok);
+  }
+  const svg = document.getElementById("map");
+  if (svg) svg.classList.toggle("zoomed", view.k > view.fitK * 1.05);
+}
+
+function rect(x, y, w, h, anchor) {
+  const x0 = anchor === "start" ? x : x - w / 2;
+  return { x0, x1: x0 + w, y0: y - h / 2, y1: y + h / 2 };
+}
+
+function clampView() {
+  const s = state.layout.storeys.find((x) => x.number === state.floor);
+  view.k = Math.max(view.fitK * 0.8, Math.min(view.fitK * 12, view.k));
+  const vw = view.w / view.k, vh = view.h / view.k;
+  const mx = Math.max(0, vw - s.w) / 2 + vw * 0.3, my = Math.max(0, vh - s.h) / 2 + vh * 0.3;
+  view.x = Math.max(-mx, Math.min(s.w - vw + mx, view.x));
+  view.y = Math.max(-my, Math.min(s.h - vh + my, view.y));
+}
+
+function zoomAt(f, sx, sy) {
+  const wx = view.x + sx / view.k, wy = view.y + sy / view.k;
+  view.k *= f; clampView();
+  view.x = wx - sx / view.k; view.y = wy - sy / view.k; clampView();
+  apply();
+}
+const zoomBy = (f) => zoomAt(f, view.w / 2, view.h / 2);
+function fit() { view.floor = null; state.wholeFloor = true; drawMap(dataOf(state.result)); }
+function centreOn(x, y, k, quiet) {
+  view.k = k; clampView(); view.x = x - view.w / 2 / view.k; view.y = y - view.h / 2 / view.k; clampView();
+  if (!quiet) apply();
+}
+
+function bindPanZoom(svg) {
+  const ptrs = new Map();
+  let last = null, pinch = null, moved = false;
+  const local = (e) => { const b = svg.getBoundingClientRect(); return [(e.clientX - b.left) * view.w / b.width, (e.clientY - b.top) * view.h / b.height]; };
+  svg.addEventListener("pointerdown", (e) => {
+    ptrs.set(e.pointerId, local(e)); moved = false;
+    if (ptrs.size === 1) last = local(e);
+    if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = Math.hypot(a[0] - b[0], a[1] - b[1]); }
+  });
+  svg.addEventListener("pointermove", (e) => {
+    if (!ptrs.has(e.pointerId)) return;
+    const p = local(e); ptrs.set(e.pointerId, p);
+    if (ptrs.size === 2 && pinch) {
+      const [a, b] = [...ptrs.values()], dd = Math.hypot(a[0] - b[0], a[1] - b[1]);
+      zoomAt(dd / pinch, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2); pinch = dd; return;
+    }
+    if (!last) return;
+    // At the fitted size a touch drag scrolls the chat; zoomed in, it pans.
+    if (e.pointerType === "touch" && view.k <= view.fitK * 1.05) return;
+    const dx = p[0] - last[0], dy = p[1] - last[1];
+    if (!moved && Math.hypot(dx, dy) < 3) return;
+    if (!moved) { moved = true; svg.setPointerCapture(e.pointerId); svg.classList.add("dragging"); }
+    view.x -= dx / view.k; view.y -= dy / view.k; clampView(); apply(); last = p;
+  });
+  const up = (e) => { ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch = null; if (!ptrs.size) { last = null; svg.classList.remove("dragging"); } };
+  svg.addEventListener("pointerup", up); svg.addEventListener("pointercancel", up);
+  // Pinch on a trackpad, or ctrl/cmd and the wheel; a plain wheel scrolls the chat.
+  svg.addEventListener("wheel", (e) => {
+    if (!e.ctrlKey && !e.metaKey) return;
+    e.preventDefault();
+    const [sx, sy] = local(e);
+    zoomAt(Math.exp(-e.deltaY / 200), sx, sy);
+  }, { passive: false });
+  svg.addEventListener("dblclick", (e) => { const [sx, sy] = local(e); zoomAt(2, sx, sy); });
+}
+
+let resizeTimer = 0;
+window.addEventListener("resize", () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => { if (state.layout) { view.floor = null; drawMap(dataOf(state.result)); } }, 120);
+});
+
+start();
+})();
+</script>
+</body>
+</html>

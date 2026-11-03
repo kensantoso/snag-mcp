@@ -1,0 +1,12 @@
+# Never commit a saved location or anything credential-shaped.
+.env
+*.key
+*.local
+config.json
+
+# Build output.
+/snag-mcp
+
+# Packed bundle and its staging dir: build artefacts, rebuilt by `mcpb pack bundle`.
+/bundle/server/
+*.mcpb

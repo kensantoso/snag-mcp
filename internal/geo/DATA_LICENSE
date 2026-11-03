@@ -1,0 +1,14 @@
+au_postcodes.tsv.gz is derived from the GeoNames postal code extract for
+Australia (https://download.geonames.org/export/zip/AU.zip), trimmed to
+postcode, place name, state, latitude, longitude, accuracy and council area.
+
+GeoNames (https://www.geonames.org) publishes it under the Creative Commons
+Attribution 4.0 International licence:
+https://creativecommons.org/licenses/by/4.0/
+
+The data is provided "as is" without warranty or any representation of
+accuracy, timeliness or completeness. Regenerate with
+scripts/update-postcodes.sh.
+
+This licence covers the data file only. The code in this repository is MIT
+licensed; see LICENSE at the root.

@@ -1,0 +1,74 @@
+{
+ "itemNumber": "9200007",
+ "name": "Example 300mm Flexible Braided Hose",
+ "isActive": true,
+ "isSpecialProduct": false,
+ "brand": {
+  "code": "exampleplumbing",
+  "name": "Example Plumbing"
+ },
+ "feature": {
+  "description": "Invented braided hose for the tests.",
+  "pointers": [
+   "Stainless steel braid"
+  ]
+ },
+ "classifications": [
+  {
+   "code": "example",
+   "features": [
+    {
+     "code": "inlet_size",
+     "comparable": false,
+     "featureValues": [
+      {
+       "value": "15"
+      }
+     ],
+     "name": "Inlet Size",
+     "range": false
+    },
+    {
+     "code": "outlet_size",
+     "comparable": false,
+     "featureValues": [
+      {
+       "value": "15"
+      }
+     ],
+     "name": "Outlet Size",
+     "range": false
+    },
+    {
+     "code": "length",
+     "comparable": false,
+     "featureValues": [
+      {
+       "value": "300mm"
+      }
+     ],
+     "name": "Length",
+     "range": false
+    },
+    {
+     "code": "colour",
+     "comparable": false,
+     "featureValues": [
+      {
+       "value": "Silver"
+      }
+     ],
+     "name": "Colour",
+     "range": false
+    }
+   ],
+   "name": "EXAMPLE"
+  }
+ ],
+ "hasEmicroMobilitySafetyDoc": false,
+ "productLinks": [
+  "details",
+  "feature",
+  "warrantyReturns"
+ ]
+}

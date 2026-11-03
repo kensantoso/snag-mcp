@@ -1,0 +1,53 @@
+{
+ "itemNumber": "9200004",
+ "name": "Copperline Dual MI Hose Tap 20mm Chrome Lead Free",
+ "isActive": true,
+ "isSpecialProduct": false,
+ "brand": {
+  "code": "copperline",
+  "name": "Copperline"
+ },
+ "feature": {
+  "description": "Invented garden tap for the tests.",
+  "pointers": [
+   "Chrome finish",
+   "Lead free"
+  ]
+ },
+ "classifications": [
+  {
+   "code": "example",
+   "features": [
+    {
+     "code": "colour",
+     "comparable": false,
+     "featureValues": [
+      {
+       "value": "Chrome"
+      }
+     ],
+     "name": "Colour",
+     "range": false
+    },
+    {
+     "code": "material",
+     "comparable": false,
+     "featureValues": [
+      {
+       "value": "Brass"
+      }
+     ],
+     "name": "Material",
+     "range": false
+    }
+   ],
+   "name": "EXAMPLE"
+  }
+ ],
+ "hasEmicroMobilitySafetyDoc": false,
+ "productLinks": [
+  "details",
+  "feature",
+  "warrantyReturns"
+ ]
+}

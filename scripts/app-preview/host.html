@@ -1,0 +1,106 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>pick-list preview host</title>
+<style>
+  html, body { margin: 0; background: #e9ebea; }
+  body { padding: 12px; }
+  iframe { display: block; border: 1px solid #c8ccca; border-radius: 10px; background: transparent; }
+  body.dark { background: #111413; }
+  pre#log { display: none; }
+</style>
+</head>
+<body>
+<pre id="log"></pre>
+<script>
+"use strict";
+// Plays the host for preview.py: renders the view the way MCP Apps hosts do,
+// in an iframe under the spec's default CSP, and answers it from a recording.
+// The iframe is same-origin only so the preview can click inside it.
+const CASE = /*CASE*/null;
+const logEl = document.getElementById("log");
+const log = (s) => { logEl.textContent += s + "\n"; };
+if (CASE.theme === "dark") document.body.classList.add("dark");
+
+const csp = "default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; " +
+  "img-src 'self' data:; media-src 'self' data:; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'self'";
+const html = CASE.rec.view.text.replace("<head>", `<head><meta http-equiv="Content-Security-Policy" content="${csp}">`);
+const frame = document.createElement("iframe");
+frame.setAttribute("sandbox", "allow-scripts allow-same-origin");
+frame.style.width = CASE.width + "px";
+// The second pass starts at the height the first measured, so the view lays
+// out once at its final size rather than racing its own resize.
+frame.style.height = (CASE.height || 200) + "px";
+frame.srcdoc = html;
+document.body.appendChild(frame);
+
+const post = (m) => frame.contentWindow.postMessage(Object.assign({ jsonrpc: "2.0" }, m), "*");
+let sentResult = false;
+window.addEventListener("message", (e) => {
+  if (e.source !== frame.contentWindow) return;
+  const m = e.data;
+  log((m.id !== undefined ? "request " : "notify ") + m.method + (m.method === "tools/call" ? " " + JSON.stringify(m.params) : ""));
+  switch (m.method) {
+    case "ui/initialize":
+      post({ id: m.id, result: {
+        protocolVersion: "2026-01-26",
+        hostInfo: { name: "preview-host", version: "1" },
+        hostCapabilities: { serverTools: {}, logging: {} },
+        hostContext: { theme: CASE.theme, displayMode: "inline", availableDisplayModes: ["inline", "fullscreen"],
+          containerDimensions: { width: CASE.width, maxHeight: 4000 }, platform: "desktop", locale: "en-AU",
+          toolInfo: { tool: CASE.rec.tool } },
+      } });
+      break;
+    case "ui/notifications/initialized":
+      post({ method: "ui/notifications/tool-input", params: { arguments: CASE.rec.arguments } });
+      setTimeout(() => { post({ method: "ui/notifications/tool-result", params: CASE.rec.result }); sentResult = true; }, 50);
+      break;
+    case "tools/call":
+      if (m.params.name !== "get_store_layout" || !CASE.rec.layout) {
+        post({ id: m.id, error: { code: -32602, message: "unknown tool" } });
+      } else if (CASE.fail) {
+        post({ id: m.id, result: { isError: true, content: [{ type: "text", text: "simulated failure" }] } });
+      } else {
+        // As a host proxies it: the request must match what was recorded.
+        const same = JSON.stringify(m.params.arguments) === JSON.stringify(CASE.rec.layout.arguments);
+        log("layout arguments match recording: " + same);
+        setTimeout(() => post({ id: m.id, result: CASE.rec.layout.result }), 30);
+      }
+      break;
+    case "ui/notifications/size-changed":
+      frame.style.height = m.params.height + "px";
+      log("height " + (m.params.height + 2));
+      break;
+    case "ui/request-display-mode":
+      post({ id: m.id, result: { mode: "inline" } });
+      break;
+  }
+});
+
+// Scripted interaction once the map has drawn.
+setTimeout(() => {
+  const doc = frame.contentDocument;
+  for (const sel of CASE.click) {
+    const t = doc.querySelector(sel);
+    log("click " + sel + (t ? "" : " (not found)"));
+    if (t) t.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  }
+  if (CASE.hover) {
+    const li = doc.querySelector(`li.pick[data-stop="${CASE.hover}"]`);
+    if (li) li.dispatchEvent(new MouseEvent("mouseenter"));
+    log("hover " + CASE.hover + (li ? "" : " (not found)"));
+  }
+  // Headless Chrome may not run the view's animation frames before the
+  // screenshot, so size the frame from its document as well.
+  const h = Math.ceil(Math.max(doc.documentElement.getBoundingClientRect().height,
+    doc.documentElement.scrollHeight, doc.body.scrollHeight));
+  frame.style.height = h + "px";
+  log("measured " + (h + 2));
+  log("markers " + doc.querySelectorAll(".marker").length + ", visible labels " +
+    [...doc.querySelectorAll(".lbl")].filter((g) => !g.classList.contains("hidden")).length +
+    ", fallback image " + doc.querySelectorAll("img.fallback").length + ", result sent " + sentResult);
+}, 1500);
+</script>
+</body>
+</html>

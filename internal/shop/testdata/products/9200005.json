@@ -1,0 +1,41 @@
+{
+ "itemNumber": "9200005",
+ "name": "Copperline 15C x 15MI Brass Compression Union LF",
+ "isActive": true,
+ "isSpecialProduct": false,
+ "brand": {
+  "code": "copperline",
+  "name": "Copperline"
+ },
+ "feature": {
+  "description": "Invented union for the tests.",
+  "pointers": [
+   "Lead free"
+  ]
+ },
+ "classifications": [
+  {
+   "code": "example",
+   "features": [
+    {
+     "code": "material",
+     "comparable": false,
+     "featureValues": [
+      {
+       "value": "Brass"
+      }
+     ],
+     "name": "Material",
+     "range": false
+    }
+   ],
+   "name": "EXAMPLE"
+  }
+ ],
+ "hasEmicroMobilitySafetyDoc": false,
+ "productLinks": [
+  "details",
+  "feature",
+  "warrantyReturns"
+ ]
+}

@@ -1,0 +1,91 @@
+{
+ "Limit": 3,
+ "Offset": 0,
+ "TotalResults": 14,
+ "Locale": "en_US",
+ "Results": [
+  {
+   "Rating": 1,
+   "Title": "Handle snapped after a month",
+   "ReviewText": "Invented review text for the tests. The handle came off when I turned it.",
+   "SubmissionTime": "2021-01-25T10:01:59.000+00:00",
+   "TotalPositiveFeedbackCount": 31,
+   "TotalNegativeFeedbackCount": 2,
+   "UserNickname": "reviewer1",
+   "ContentLocale": "en_AU",
+   "IsRecommended": false,
+   "IsSyndicated": false,
+   "IsRatingsOnly": false,
+   "ProductId": "9300001_AU"
+  },
+  {
+   "Rating": 2,
+   "Title": "Drips",
+   "ReviewText": "Invented review text for the tests. It drips.",
+   "SubmissionTime": "2021-02-05T09:24:11.000+00:00",
+   "TotalPositiveFeedbackCount": 16,
+   "TotalNegativeFeedbackCount": 2,
+   "UserNickname": "reviewer2",
+   "ContentLocale": "en_US",
+   "IsRecommended": false,
+   "IsSyndicated": true,
+   "SyndicationSource": {
+    "Name": "Example Maker"
+   },
+   "IsRatingsOnly": false,
+   "ProductId": "9300001_AU"
+  },
+  {
+   "Rating": 1,
+   "Title": "Not worth it",
+   "ReviewText": "Invented review text for the tests.",
+   "SubmissionTime": "2022-11-28T01:48:11.000+00:00",
+   "TotalPositiveFeedbackCount": 10,
+   "TotalNegativeFeedbackCount": 3,
+   "UserNickname": "reviewer3",
+   "ContentLocale": "en_AU",
+   "IsRecommended": null,
+   "IsSyndicated": false,
+   "IsRatingsOnly": false,
+   "ProductId": "9300001_AU"
+  }
+ ],
+ "Includes": {
+  "Products": {
+   "9300001": {
+    "Id": "9300001",
+    "Name": "Example In-Line Tap",
+    "ReviewStatistics": {
+     "TotalReviewCount": 19,
+     "AverageOverallRating": 2.6315789473684212,
+     "RecommendedCount": 4,
+     "NotRecommendedCount": 7,
+     "RatingDistribution": [
+      {
+       "RatingValue": 1,
+       "Count": 9
+      },
+      {
+       "RatingValue": 5,
+       "Count": 5
+      },
+      {
+       "RatingValue": 3,
+       "Count": 2
+      },
+      {
+       "RatingValue": 4,
+       "Count": 2
+      },
+      {
+       "RatingValue": 2,
+       "Count": 1
+      }
+     ]
+    }
+   }
+  }
+ },
+ "HasErrors": false,
+ "Errors": []
+}

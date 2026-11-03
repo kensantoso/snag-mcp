@@ -1,0 +1,56 @@
+{
+  "manifest_version": "0.4",
+  "name": "snag-mcp",
+  "display_name": "Snag",
+  "version": "0.3.1",
+  "description": "Find products sold at Bunnings stores near you, check stock and aisles, and plan one trip for a whole list.",
+  "long_description": "Snag helps you shop at Bunnings in person. Unofficial; not affiliated with Bunnings. For personal, non-commercial use; you are responsible for complying with Bunnings' website terms of use. Uses the public APIs behind bunnings.com.au with the guest access any visitor gets, so there is no account or key.\n\nEvery answer is limited to stores near your postcode or suburb: an item appears only if a store within the radius sells it in person. Check a shopping list against live stock to find the store that can fill it, or get a pick list for the store you are going to in walking order, with a floor plan of the store showing each stop (shown inline as an interactive map where Claude supports MCP Apps), and a summary of what you will be carrying home. Compare products by their specs, connection details, installation guides and reviews.\n\nYour location is asked for on first use and saved on your computer. It is resolved offline and never sent anywhere except as the coordinates Bunnings needs to find stores.",
+  "author": {
+    "name": "kensantoso",
+    "url": "https://github.com/kensantoso"
+  },
+  "license": "MIT",
+  "keywords": [
+    "bunnings",
+    "hardware",
+    "diy",
+    "shopping",
+    "australia"
+  ],
+  "server": {
+    "type": "binary",
+    "entry_point": "server/snag-mcp",
+    "mcp_config": {
+      "command": "${__dirname}/server/snag-mcp",
+      "args": []
+    }
+  },
+  "tools": [
+    {
+      "name": "set_location",
+      "description": "Save your postcode or suburb for finding nearby stores"
+    },
+    {
+      "name": "search_products",
+      "description": "Products sold in person at stores near you, with prices, optionally by brand"
+    },
+    {
+      "name": "get_product",
+      "description": "Details for comparing: specs, connection details, documents, rating, dimensions, weight, nearest price"
+    },
+    {
+      "name": "get_reviews",
+      "description": "Reviews and questions with answers from other buyers"
+    },
+    {
+      "name": "check_list",
+      "description": "A shopping list against live stock: stores ranked, or a walking-order pick list with a store map"
+    }
+  ],
+  "compatibility": {
+    "claude_desktop": ">=0.10.0",
+    "platforms": [
+      "darwin"
+    ]
+  }
+}

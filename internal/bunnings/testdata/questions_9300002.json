@@ -1,0 +1,33 @@
+{
+ "Limit": 5,
+ "Offset": 0,
+ "TotalResults": 1,
+ "Locale": "en_US",
+ "Results": [
+  {
+   "QuestionSummary": "Will this cartridge fit the Example 1510 printer?\r\n\r\nInvented question text for the tests.",
+   "QuestionDetails": null,
+   "SubmissionTime": "2023-07-22T09:56:30.000+00:00",
+   "UserNickname": "asker1",
+   "AnswerIds": [
+    "1000000001"
+   ],
+   "ProductId": "9300002",
+   "TotalAnswerCount": 1
+  }
+ ],
+ "Includes": {
+  "Answers": {
+   "1000000001": {
+    "AnswerText": "Invented answer for the tests: call our support line on 1300 000 000.",
+    "SubmissionTime": "2023-07-22T10:42:11.000+00:00",
+    "UserNickname": "Example Brand Support",
+    "IsBrandAnswer": true,
+    "TotalPositiveFeedbackCount": 0,
+    "QuestionId": "1000000000"
+   }
+  }
+ },
+ "HasErrors": false,
+ "Errors": []
+}

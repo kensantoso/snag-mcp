@@ -1,0 +1,78 @@
+{
+ "itemNumber": "9200006",
+ "name": "Dripstop 12mm Universal Tap Adaptor",
+ "isActive": true,
+ "isSpecialProduct": false,
+ "brand": {
+  "code": "dripstop",
+  "name": "Dripstop"
+ },
+ "feature": {
+  "description": "An invented tap adaptor that joins a 12mm hose to a tap.",
+  "pointers": [
+   "Suits 20mm (3/4\") and 25mm (1\") BSP taps",
+   "Leak free",
+   "Use with a 12mm hose connector",
+   "UV treated"
+  ]
+ },
+ "classifications": [
+  {
+   "code": "example",
+   "features": [
+    {
+     "code": "colour",
+     "comparable": false,
+     "featureValues": [
+      {
+       "value": "Grey"
+      }
+     ],
+     "name": "Colour",
+     "range": false
+    },
+    {
+     "code": "material",
+     "comparable": false,
+     "featureValues": [
+      {
+       "value": "ABS plastic"
+      }
+     ],
+     "name": "Material",
+     "range": false
+    },
+    {
+     "code": "fitting_connection_type",
+     "comparable": false,
+     "featureValues": [
+      {
+       "value": "Snap on"
+      }
+     ],
+     "name": "Fitting Connection Type",
+     "range": false
+    },
+    {
+     "code": "outdoor_use_(yes/no)",
+     "comparable": false,
+     "featureValues": [
+      {
+       "value": "Yes"
+      }
+     ],
+     "name": "Outdoor Use (Yes/No)",
+     "range": false
+    }
+   ],
+   "name": "EXAMPLE"
+  }
+ ],
+ "weight": "0.02",
+ "hasEmicroMobilitySafetyDoc": false,
+ "productLinks": [
+  "details",
+  "feature",
+  "warrantyReturns"
+ ]
+}
